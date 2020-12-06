@@ -2,6 +2,8 @@ import datetime
 import re
 import os
 
+os.system("title Shutdown Scheduler")
+
 print("""
 ********************* Shutdown Scheduler *********************
  Enter a time or countdown duration in which to shutdown. 
