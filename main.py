@@ -1,15 +1,42 @@
 import datetime
 import re
 import os
+import shelve
+
+# How many times the user can postpone a shutdown
+INITIAL_POSTPONES = 1
+
+data = shelve.open("data")
+KEY_scheduledShutdown = 'scheduledShutdown'
+KEY_remainingPostpones = 'remainingPostpones'
+# Reset the number of remaining/available delays if eligible
+if not data.get(KEY_scheduledShutdown) or data[KEY_scheduledShutdown] < datetime.datetime.now():
+    data[KEY_remainingPostpones] = INITIAL_POSTPONES
 
 os.system("title Shutdown Scheduler")
 
-print("""
+
+def get_shutdown_string(eventTime):
+    if not eventTime or eventTime < datetime.datetime.now():
+        return ""
+    delta = eventTime - datetime.datetime.now()
+    deltaString = ""
+    if delta.seconds >= 3600:
+        deltaString += str(delta.seconds // 3600) + "h "
+    if (delta.seconds % 3600) >= 60:
+        deltaString += str((delta.seconds % 3600) // 60) + "m "
+    deltaString += str(delta.seconds % 60) + "s"
+    return f"Shutdown scheduled for {eventTime.hour if eventTime.hour <= 12 else eventTime.hour - 12}:{eventTime:%M:%S %p} " \
+           f"(in {deltaString})."
+
+
+print(f"""
 ********************* Shutdown Scheduler *********************
  Enter a time or countdown duration in which to shutdown. 
  Examples:
       Time: 10:00PM, 10PM, 10 pm, 10p, 10:00 (12-hour format)
       Duration: 0h15m, 15m, 15
+ {get_shutdown_string(data.get(KEY_scheduledShutdown))} Remaining postpones: {data[KEY_remainingPostpones]}     
       """)
 
 
@@ -64,16 +91,20 @@ while sec == 0:
         continue
 
     delta = datetime.timedelta(seconds=sec)
-    deltaString = ""
-    if delta.seconds >= 3600:
-        deltaString += str(delta.seconds // 3600) + "h "
-    if (delta.seconds % 3600) >= 60:
-        deltaString += str((delta.seconds % 3600) // 60) + "m "
-    deltaString += str(delta.seconds % 60) + "s"
     eventTime = datetime.datetime.now() + delta
-    print(
-        f"Shutdown scheduled for {eventTime.hour if eventTime.hour <= 12 else eventTime.hour - 12}:{eventTime:%M:%S %p} "
-        f"(in {deltaString}). Press any key to exit.")
+
+    if data.get(KEY_scheduledShutdown) and eventTime > data[KEY_scheduledShutdown]:  # if postponing a shutdown
+        if data[KEY_remainingPostpones] <= 0:
+            print("Error: No postpones remaining.")
+            continue
+        else:
+            data[KEY_remainingPostpones] = data[KEY_remainingPostpones] - 1
+
+    if data.get(KEY_scheduledShutdown):
+        os.system("shutdown /a")
+
+    data[KEY_scheduledShutdown] = eventTime
+    print(f"{get_shutdown_string(eventTime)} Press any key to exit.")
 
     os.system(f"shutdown /s /t {sec}")
     os.system("pause > nul")
