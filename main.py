@@ -10,7 +10,7 @@ data = shelve.open("data")
 KEY_scheduledShutdown = 'scheduledShutdown'
 KEY_remainingPostpones = 'remainingPostpones'
 # Reset the number of remaining/available delays if eligible
-if not data.get(KEY_scheduledShutdown) or data[KEY_scheduledShutdown] < datetime.datetime.now():
+if data.get(KEY_scheduledShutdown) == None or data.get(KEY_remainingPostpones) == None or data[KEY_scheduledShutdown] < datetime.datetime.now():
     data[KEY_remainingPostpones] = INITIAL_POSTPONES
     data[KEY_scheduledShutdown] = None
 
