@@ -36,17 +36,19 @@ def get_shutdown_string(eventTime):
     return f"Shutdown scheduled for {format_time(eventTime)} " \
            f"(in {deltaString}). "
 
+def print_start_screen():
+    print(f"""
+    ********************* Shutdown Scheduler *********************
+    Enter a time or countdown duration in which to shutdown. 
+    Examples:
+        Time: 10:00PM, 10PM, 10 pm, 10p, 10:00 (12-hour format)
+        Duration: 0h15m, 15m, 15
+    {get_shutdown_string(data.get(KEY_scheduledShutdown))}     
+        """)
+    if data[KEY_scheduledShutdown]:
+        print(f"Remaining postpones: {data[KEY_remainingPostpones]}")
 
-print(f"""
-********************* Shutdown Scheduler *********************
- Enter a time or countdown duration in which to shutdown. 
- Examples:
-      Time: 10:00PM, 10PM, 10 pm, 10p, 10:00 (12-hour format)
-      Duration: 0h15m, 15m, 15
- {get_shutdown_string(data.get(KEY_scheduledShutdown))}     
-      """)
-if data[KEY_scheduledShutdown]:
-    print(f"Remaining postpones: {data[KEY_remainingPostpones]}")
+print_start_screen()
 
 def infer_a_or_p(hour, minute):
     now = datetime.datetime.now()
@@ -107,17 +109,28 @@ while sec == 0:
             sec = 0 # force them to choose a new time
             continue
         else:
+            canceled = False # whether the user canceled the postpone
             while True:
                 print("Type out one of the following wake up times to continue:")
                 option1 = format_time_short(eventTime + datetime.timedelta(hours=7, minutes=45))
                 option2 = format_time_short(eventTime + datetime.timedelta(hours=9, minutes=15))
-                print(f" {option1} OR {option2}")
+                print(f"  {option1} OR {option2}")
+                print("or enter a blank line to cancel.")
                 def normalize(time_str):
                     return re.sub(r'[^0-9:AP]', '', time_str)
                 userChoice = normalize(input("> ").upper())
+                if userChoice == '':
+                    canceled = True
+                    break
                 if userChoice == normalize(option1) or userChoice == normalize(option2):
                     break
-            data[KEY_remainingPostpones] = data[KEY_remainingPostpones] - 1
+            if canceled:
+                print_start_screen()
+                sec = 0 # User should enter in new time
+                continue
+            else:
+                # Postponing, so decrement the number of remaining postpones
+                data[KEY_remainingPostpones] = data[KEY_remainingPostpones] - 1
 
     os.system("shutdown /a 2> nul")
 
